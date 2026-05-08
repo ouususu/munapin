@@ -126,6 +126,10 @@
       <input class="form-input" id="f-performance" type="text" placeholder="예: 2024 ○○ 콘서트" />
     </div>
     <div class="form-group">
+      <label class="form-label">공연 장소</label>
+      <input class="form-input" id="f-venue" type="text" placeholder="예: 올림픽공원 체조경기장" />
+    </div>
+    <div class="form-group">
       <label class="form-label">날짜 <span class="req">*</span></label>
       <input class="form-input" id="f-date" type="date" />
     </div>
@@ -222,10 +226,11 @@ function renderMarkers(){
           <div style="font-weight:700;color:var(--dark);font-size:0.78rem">${escHtml(s.artist)}</div>
         </div>
         ${s.performance ? `<div style="font-size:0.75rem;color:#8A7580;margin-bottom:2px">${escHtml(s.performance)}</div>` : ''}
+        ${s.venue ? `<div style="font-size:0.75rem;color:var(--pink);margin-bottom:2px">📍 ${escHtml(s.venue)}</div>` : ''}
         <div style="font-weight:600;margin:2px 0">${escHtml(s.goods)}</div>
         <div style="font-size:0.8rem;color:#8A7580">👤 ${escHtml(s.host)}</div>
         <div style="font-size:0.8rem;color:#d06000;margin-top:4px">
-          ${s.date ? `📅 ${escHtml(s.date)} ` : ''}
+          ${s.share_date ? `📅 ${escHtml(s.share_date)} ` : ''}
           ${s.time ? `⏰ ${escHtml(s.time)}` : ''}
         </div>
       </div>`;
@@ -244,19 +249,19 @@ function renderPanel(){
       <div class="card-top">
         <div class="card-img">${s.image_url?`<img src="${s.image_url}" alt="굿즈">`:"🎁"}</div>
         <div class="card-info">
-          <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
-            <span style="background:${s.category==='교환'?'rgba(79,139,255,0.1)':'rgba(255,79,139,0.1)'};color:${s.category==='교환'?'#4F8BFF':'#FF4F8B'};padding:1px 5px;border-radius:4px;font-size:0.65rem;font-weight:700">${escHtml(s.category||'나눔')}</span>
-            <div class="card-artist">${escHtml(s.artist)}</div>
-          </div>
-          ${s.performance ? `<div style="font-size:0.7rem;color:var(--gray);margin-bottom:2px">${escHtml(s.performance)}</div>` : ''}
-          <div class="card-goods">${escHtml(s.goods)}</div>
-          <div class="card-host">👤 ${escHtml(s.host)}</div>
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
+          <span style="background:${s.category==='교환'?'rgba(79,139,255,0.1)':'rgba(255,79,139,0.1)'};color:${s.category==='교환'?'#4F8BFF':'#FF4F8B'};padding:1px 5px;border-radius:4px;font-size:0.65rem;font-weight:700">${escHtml(s.category||'나눔')}</span>
+          <div class="card-artist">${escHtml(s.artist)}</div>
         </div>
-      </div>
-      <div class="card-meta">
-        ${s.date ? `<span class="tag">📅 ${escHtml(s.date)}</span>` : ''}
-        ${s.time ? `<span class="tag time">⏰ ${escHtml(s.time)}</span>` : ''}
-        ${s.memo ? `<span class="tag">💬 ${escHtml(s.memo.slice(0,20))}${s.memo.length>20?"…":""}</span>` : ''}
+        ${s.performance ? `<div style="font-size:0.7rem;color:var(--gray);margin-bottom:2px">${escHtml(s.performance)}</div>` : ''}
+        ${s.venue ? `<div style="font-size:0.7rem;color:var(--pink);margin-bottom:2px">📍 ${escHtml(s.venue)}</div>` : ''}
+        <div class="card-goods">${escHtml(s.goods)}</div>
+        <div class="card-host">👤 ${escHtml(s.host)}</div>
+        </div>
+        </div>
+        <div class="card-meta">
+        ${s.share_date ? `<span class="tag">📅 ${escHtml(s.share_date)}</span>` : ''}
+        ${s.time ? `<span class="tag time">⏰ ${escHtml(s.time)}</span>` : ''}        ${s.memo ? `<span class="tag">💬 ${escHtml(s.memo.slice(0,20))}${s.memo.length>20?"…":""}</span>` : ''}
       </div>
       <div class="card-delete">
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteShare('${s.id}')">🗑 삭제</button>
@@ -304,12 +309,13 @@ async function submitShare(){
   const category=document.querySelector('input[name="f-category"]:checked').value;
   const artist=document.getElementById("f-artist").value.trim();
   const performance=document.getElementById("f-performance").value.trim();
-  const date=document.getElementById("f-date").value;
+  const venue=document.getElementById("f-venue").value.trim();
+  const share_date=document.getElementById("f-date").value;
   const goods=document.getElementById("f-goods").value.trim();
   const host=document.getElementById("f-host").value.trim();
   const time=document.getElementById("f-time").value;
   const memo=document.getElementById("f-memo").value.trim();
-  if(!artist||!goods||!host||!time||!date){showToast("필수 항목을 모두 입력해 주세요 💗");return;}
+  if(!artist||!goods||!host||!time||!share_date){showToast("필수 항목을 모두 입력해 주세요 💗");return;}
   if(!pickedLat){showToast("지도에서 나눔 위치를 선택해 주세요 📍");return;}
   const btn=document.getElementById("submit-btn");btn.textContent="등록 중...";btn.disabled=true;
   try{
@@ -320,7 +326,7 @@ async function submitShare(){
       const{error:upErr}=await db.storage.from("goods-images").upload(path,file);
       if(!upErr){const{data:ud}=db.storage.from("goods-images").getPublicUrl(path);image_url=ud.publicUrl;}
     }
-    const{error}=await db.from("shares").insert([{category,artist,performance,date,goods,host,time,memo,image_url,lat:pickedLat,lng:pickedLng}]);
+    const{error}=await db.from("shares").insert([{category,artist,performance,venue,share_date,goods,host,time,memo,image_url,lat:pickedLat,lng:pickedLng}]);
     if(error)throw error;
     showToast("등록됐어요! 💗");closeModal();resetForm();
   }catch(err){console.error(err);showToast("등록에 실패했어요. 다시 시도해 주세요.");}
@@ -334,7 +340,7 @@ async function deleteShare(id){
 }
 
 function resetForm(){
-  ["f-artist","f-performance","f-date","f-goods","f-host","f-time","f-memo"].forEach(id=>document.getElementById(id).value="");
+  ["f-artist","f-performance","f-venue","f-date","f-goods","f-host","f-time","f-memo"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("img-preview").innerHTML="";
   document.getElementById("loc-display").style.display="none";
   document.getElementById("pick-loc-btn").textContent="📍 지도에서 위치 선택";
