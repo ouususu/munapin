@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>나눔핀 💗 아이돌 굿즈 무료나눔 지도</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Gmarket+Sans:wght@300;500;700&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- ✅ YOUR_KAKAO_JS_KEY 부분을 카카오 JavaScript 키로 교체하세요 -->
+  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=07813e790694807d1abcd881793bf886&autoload=false"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--pink:#FF4F8B;--pink-lt:#FFB3CF;--pink-dk:#C7005A;--cream:#FFF5F8;--dark:#1A0A10;--gray:#8A7580;--white:#FFFFFF;--shadow:0 8px 32px rgba(255,79,139,0.12);--radius:18px;--font-display:'Gmarket Sans',sans-serif;--font-body:'Pretendard',sans-serif}
+    html,body{height:100%;font-family:var(--font-body);background:var(--cream);color:var(--dark)}
+    header{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:58px;background:rgba(255,255,255,0.9);backdrop-filter:blur(16px);border-bottom:1.5px solid rgba(255,79,139,0.12);box-shadow:0 2px 18px rgba(255,79,139,0.07)}
+    .logo{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:1.25rem;font-weight:700;color:var(--pink-dk);text-decoration:none}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:50px;border:none;font-family:var(--font-body);font-size:0.88rem;font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-primary{background:linear-gradient(135deg,var(--pink),var(--pink-dk));color:#fff;box-shadow:0 4px 14px rgba(255,79,139,0.35)}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 7px 20px rgba(255,79,139,0.4)}
+    .btn-ghost{background:rgba(255,79,139,0.08);color:var(--pink-dk)}
+    .btn-ghost:hover{background:rgba(255,79,139,0.16)}
+    .btn-sm{padding:6px 13px;font-size:0.8rem}
+    .btn:disabled{opacity:0.6;cursor:not-allowed;transform:none!important}
+    #map{position:fixed;top:58px;left:0;right:0;bottom:0;width:100%;height:calc(100vh - 58px)}
+    #panel{position:fixed;top:58px;right:0;width:360px;height:calc(100vh - 58px);background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);border-left:1.5px solid rgba(255,79,139,0.1);box-shadow:-6px 0 30px rgba(255,79,139,0.07);display:flex;flex-direction:column;z-index:100;overflow:hidden;transform:translateX(0);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+    #panel.hidden{transform:translateX(100%)}
+    .panel-header{padding:18px 20px 12px;border-bottom:1.5px solid rgba(255,79,139,0.08);display:flex;align-items:center;justify-content:space-between}
+    .panel-title{font-family:var(--font-display);font-size:1rem;font-weight:700;color:var(--pink-dk)}
+    .panel-count{background:var(--pink);color:#fff;border-radius:50px;padding:2px 10px;font-size:0.78rem;font-weight:700}
+    #share-list{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+    #share-list::-webkit-scrollbar{width:4px}
+    #share-list::-webkit-scrollbar-thumb{background:var(--pink-lt);border-radius:4px}
+    .share-card{background:#fff;border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);border:1.5px solid rgba(255,79,139,0.08);cursor:pointer;transition:all .2s;animation:fadeUp .3s ease both}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+    .share-card:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,79,139,0.15)}
+    .share-card.focused{outline:2.5px solid var(--pink)}
+    .card-top{display:flex;align-items:flex-start;gap:11px}
+    .card-img{width:68px;height:68px;border-radius:12px;border:2px solid var(--pink-lt);flex-shrink:0;background:linear-gradient(135deg,#FFE4EF,#FFB3CF);display:flex;align-items:center;justify-content:center;font-size:1.6rem;overflow:hidden}
+    .card-img img{width:100%;height:100%;object-fit:cover}
+    .card-info{flex:1;min-width:0}
+    .card-artist{font-size:0.73rem;font-weight:700;color:var(--pink);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
+    .card-goods{font-size:0.92rem;font-weight:600;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .card-host{font-size:0.8rem;color:var(--gray);margin-top:3px}
+    .card-meta{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+    .tag{display:inline-flex;align-items:center;gap:3px;background:rgba(255,79,139,0.07);color:var(--pink-dk);border-radius:50px;padding:3px 9px;font-size:0.75rem;font-weight:500}
+    .tag.time{background:rgba(255,150,50,0.1);color:#d06000}
+    .card-delete{margin-top:10px;display:flex;justify-content:flex-end}
+    #panel-toggle{position:fixed;right:0;top:50%;transform:translateY(-50%);background:var(--pink);color:#fff;border:none;border-radius:12px 0 0 12px;padding:14px 8px;cursor:pointer;z-index:200;box-shadow:-4px 0 16px rgba(255,79,139,0.3);font-size:0.82rem;transition:all .2s;writing-mode:vertical-rl;font-family:var(--font-body);font-weight:600;letter-spacing:2px}
+    #panel-toggle:hover{background:var(--pink-dk)}
+    .modal-overlay{position:fixed;inset:0;z-index:2000;background:rgba(26,10,16,0.55);backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+    .modal-overlay.open{opacity:1;pointer-events:all}
+    .modal{background:#fff;border-radius:26px 26px 0 0;padding:26px 22px 40px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;transform:translateY(40px);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 40px rgba(255,79,139,0.15)}
+    .modal-overlay.open .modal{transform:none}
+    .modal-handle{width:40px;height:4px;background:var(--pink-lt);border-radius:4px;margin:0 auto 22px}
+    .modal-title{font-family:var(--font-display);font-size:1.15rem;font-weight:700;color:var(--pink-dk);margin-bottom:20px;text-align:center}
+    .form-group{margin-bottom:16px}
+    .form-label{display:block;font-size:0.83rem;font-weight:600;color:var(--gray);margin-bottom:6px}
+    .form-label .req{color:var(--pink)}
+    .form-input,.form-textarea{width:100%;padding:11px 14px;border-radius:12px;border:1.5px solid rgba(255,79,139,0.2);font-family:var(--font-body);font-size:0.92rem;background:var(--cream);color:var(--dark);transition:border-color .2s}
+    .form-input:focus,.form-textarea:focus{outline:none;border-color:var(--pink);background:#fff}
+    .form-textarea{height:80px;resize:vertical}
+    .img-upload-area{border:2px dashed rgba(255,79,139,0.3);border-radius:14px;padding:20px;text-align:center;cursor:pointer;background:rgba(255,79,139,0.03);transition:all .2s}
+    .img-upload-area:hover{border-color:var(--pink);background:rgba(255,79,139,0.07)}
+    .img-upload-area input{display:none}
+    .img-preview{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+    .img-preview img{width:72px;height:72px;object-fit:cover;border-radius:10px;border:2px solid var(--pink-lt)}
+    .location-pick-btn{width:100%;padding:11px 14px;border-radius:12px;border:1.5px dashed rgba(255,79,139,0.35);background:rgba(255,79,139,0.04);color:var(--pink-dk);font-family:var(--font-body);font-size:0.88rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .2s}
+    .location-pick-btn:hover{background:rgba(255,79,139,0.1)}
+    .location-display{margin-top:8px;font-size:0.8rem;color:var(--pink);font-weight:500}
+    .modal-footer{display:flex;gap:10px;margin-top:22px}
+    .modal-footer .btn{flex:1;justify-content:center;padding:13px;font-size:0.93rem}
+    #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--dark);color:#fff;padding:12px 22px;border-radius:50px;font-size:0.88rem;font-weight:500;opacity:0;pointer-events:none;transition:all .3s;z-index:9999;white-space:nowrap}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .empty-state{text-align:center;padding:40px 20px;color:var(--gray)}
+    .empty-state .emoji{font-size:2.5rem;margin-bottom:12px}
+    .empty-state p{font-size:0.9rem;line-height:1.6}
+    #pick-location-banner{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;border-radius:50px;padding:10px 22px;font-size:0.88rem;font-weight:600;z-index:500;display:none;align-items:center;gap:10px;box-shadow:0 6px 24px rgba(0,0,0,0.25)}
+    #pick-location-banner.active{display:flex}
+    #pick-location-banner button{background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:50px;padding:3px 10px;cursor:pointer;font-size:0.8rem}
+    .spinner{width:36px;height:36px;border:3px solid var(--pink-lt);border-top-color:var(--pink);border-radius:50%;animation:spin .7s linear infinite;margin:30px auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media(max-width:640px){#panel{width:100%;top:auto;bottom:0;height:48vh;border-left:none;border-top:1.5px solid rgba(255,79,139,0.1);border-radius:22px 22px 0 0}#panel.hidden{transform:translateY(100%)}#panel-toggle{top:auto;bottom:48vh;right:16px;transform:none;border-radius:50px;writing-mode:horizontal-tb;padding:8px 16px}#map{height:calc(100vh - 58px - 48vh)}}
+  </style>
+</head>
+<body>
+<header>
+  <a class="logo" href="#">📍 나눔핀</a>
+  <button class="btn btn-primary" id="open-form-btn">＋ 나눔 등록</button>
+</header>
+<div id="map"></div>
+<div id="pick-location-banner">
+  📍 나눔 장소를 지도에서 클릭해 주세요
+  <button onclick="cancelPickLocation()">취소</button>
+</div>
+<button id="panel-toggle" onclick="togglePanel()">나눔 목록</button>
+<div id="panel">
+  <div class="panel-header">
+    <span class="panel-title">💗 실시간 나눔</span>
+    <span class="panel-count" id="count">0</span>
+  </div>
+  <div id="share-list"><div class="spinner"></div></div>
+</div>
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💗 나눔 등록하기</div>
+    <div class="form-group">
+      <label class="form-label">아티스트 / 그룹명 <span class="req">*</span></label>
+      <input class="form-input" id="f-artist" type="text" placeholder="예: BTS, 에스파, 뉴진스" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">굿즈 이름 <span class="req">*</span></label>
+      <input class="form-input" id="f-goods" type="text" placeholder="예: 슬로건, 포카, 스티커 세트" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">굿즈 사진</label>
+      <div class="img-upload-area" onclick="document.getElementById('f-img').click()">
+        <input type="file" id="f-img" accept="image/*" multiple onchange="previewImages(event)" />
+        <div style="font-size:1.8rem;margin-bottom:6px">📸</div>
+        <div style="font-size:0.85rem;color:var(--gray)">사진을 탭해서 추가하세요<br/><span style="font-size:0.78rem">최대 3장</span></div>
+        <div class="img-preview" id="img-preview"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">나눔자 특징 <span class="req">*</span></label>
+      <input class="form-input" id="f-host" type="text" placeholder="예: 빨간 모자, BTS 가방" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">나눔 시간 <span class="req">*</span></label>
+      <input class="form-input" id="f-time" type="time" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">메모 / 추가 설명</label>
+      <textarea class="form-textarea" id="f-memo" placeholder="예: 콘서트 시작 전까지만! 선착순 30명"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">나눔 장소 <span class="req">*</span></label>
+      <button class="location-pick-btn" id="pick-loc-btn" onclick="startPickLocation()">📍 지도에서 위치 선택</button>
+      <div class="location-display" id="loc-display" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" id="submit-btn" onclick="submitShare()">💗 등록하기</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// =============================================
+// ✅ 여기에 Supabase 정보를 붙여넣으세요
+const SUPABASE_URL  = "YOUR_SUPABASE_URL";
+const SUPABASE_ANON = "YOUR_SUPABASE_ANON_KEY";
+// =============================================
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let kakaoMap=null,markers={},shares=[],pickingLocation=false;
+let pickedLat=null,pickedLng=null,selectedFiles=[],panelVisible=true;
+
+function initKakaoMap(){
+  kakao.maps.load(()=>{
+    kakaoMap=new kakao.maps.Map(document.getElementById("map"),{
+      center:new kakao.maps.LatLng(37.5115,127.0595),level:4
+    });
+    kakao.maps.event.addListener(kakaoMap,"click",(e)=>{
+      if(!pickingLocation)return;
+      pickedLat=e.latLng.getLat();pickedLng=e.latLng.getLng();
+      stopPickLocation();
+      document.getElementById("loc-display").style.display="block";
+      document.getElementById("loc-display").textContent=`📍 위치 선택됨 (${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)})`;
+      document.getElementById("pick-loc-btn").textContent="✅ 위치 변경하기";
+      openModal();
+    });
+    loadShares();
+    subscribeRealtime();
+  });
+}
+
+async function loadShares(){
+  const{data,error}=await db.from("shares").select("*").order("created_at",{ascending:false});
+  if(error){console.error(error);return;}
+  shares=data||[];renderPanel();renderMarkers();
+}
+
+function subscribeRealtime(){
+  db.channel("shares-ch").on("postgres_changes",{event:"*",schema:"public",table:"shares"},()=>loadShares()).subscribe();
+}
+
+function renderMarkers(){
+  Object.values(markers).forEach(m=>m.setMap(null));markers={};
+  shares.forEach(s=>{
+    if(!s.lat||!s.lng)return;
+    const pos=new kakao.maps.LatLng(s.lat,s.lng);
+    const marker=new kakao.maps.Marker({position:pos,map:kakaoMap,title:`${s.artist} - ${s.goods}`});
+    const iw=new kakao.maps.InfoWindow({content:`<div style="font-family:'Pretendard',sans-serif;padding:12px;min-width:170px"><div style="font-weight:700;color:#FF4F8B;font-size:0.78rem">${escHtml(s.artist)}</div><div style="font-weight:600;margin:2px 0">${escHtml(s.goods)}</div><div style="font-size:0.8rem;color:#8A7580">👤 ${escHtml(s.host)}</div>${s.time?`<div style="font-size:0.8rem;color:#d06000">⏰ ${escHtml(s.time)}</div>`:""}</div>`,removable:true});
+    kakao.maps.event.addListener(marker,"click",()=>{iw.open(kakaoMap,marker);focusCard(s.id);});
+    markers[s.id]=marker;
+  });
+}
+
+function renderPanel(){
+  const list=document.getElementById("share-list");
+  document.getElementById("count").textContent=shares.length;
+  if(!shares.length){list.innerHTML=`<div class="empty-state"><div class="emoji">🎀</div><p>아직 등록된 나눔이 없어요.<br/>첫 나눔을 등록해 보세요!</p></div>`;return;}
+  list.innerHTML=shares.map(s=>`<div class="share-card" id="card-${s.id}" onclick="flyToMarker('${s.id}')"><div class="card-top"><div class="card-img">${s.image_url?`<img src="${s.image_url}" alt="굿즈">`:"🎁"}</div><div class="card-info"><div class="card-artist">${escHtml(s.artist)}</div><div class="card-goods">${escHtml(s.goods)}</div><div class="card-host">👤 ${escHtml(s.host)}</div></div></div><div class="card-meta">${s.time?`<span class="tag time">⏰ ${escHtml(s.time)}</span>`:""}${s.memo?`<span class="tag">💬 ${escHtml(s.memo.slice(0,20))}${s.memo.length>20?"…":""}</span>`:""}</div><div class="card-delete"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteShare('${s.id}')">🗑 삭제</button></div></div>`).join("");
+}
+
+function focusCard(id){
+  document.querySelectorAll(".share-card").forEach(c=>c.classList.remove("focused"));
+  const card=document.getElementById(`card-${id}`);
+  if(card){card.classList.add("focused");card.scrollIntoView({behavior:"smooth",block:"nearest"});}
+}
+
+function flyToMarker(id){
+  const s=shares.find(x=>x.id==id);
+  if(s?.lat){kakaoMap.setCenter(new kakao.maps.LatLng(s.lat,s.lng));kakaoMap.setLevel(3);if(markers[id])kakao.maps.event.trigger(markers[id],"click");}
+}
+
+function togglePanel(){panelVisible=!panelVisible;document.getElementById("panel").classList.toggle("hidden",!panelVisible);}
+function startPickLocation(){closeModal();pickingLocation=true;document.getElementById("pick-location-banner").classList.add("active");}
+function stopPickLocation(){pickingLocation=false;document.getElementById("pick-location-banner").classList.remove("active");}
+function cancelPickLocation(){stopPickLocation();openModal();}
+
+function openModal(){
+  document.getElementById("modal-overlay").classList.add("open");
+  if(!document.getElementById("f-time").value){const n=new Date();document.getElementById("f-time").value=String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0");}
+}
+function closeModal(){document.getElementById("modal-overlay").classList.remove("open");}
+document.getElementById("open-form-btn").addEventListener("click",openModal);
+document.getElementById("modal-overlay").addEventListener("click",(e)=>{if(e.target===document.getElementById("modal-overlay"))closeModal();});
+
+function previewImages(e){
+  selectedFiles=Array.from(e.target.files).slice(0,3);
+  const p=document.getElementById("img-preview");p.innerHTML="";
+  selectedFiles.forEach(f=>{const img=document.createElement("img");img.src=URL.createObjectURL(f);p.appendChild(img);});
+}
+
+async function submitShare(){
+  const artist=document.getElementById("f-artist").value.trim();
+  const goods=document.getElementById("f-goods").value.trim();
+  const host=document.getElementById("f-host").value.trim();
+  const time=document.getElementById("f-time").value;
+  const memo=document.getElementById("f-memo").value.trim();
+  if(!artist||!goods||!host||!time){showToast("필수 항목을 모두 입력해 주세요 💗");return;}
+  if(!pickedLat){showToast("지도에서 나눔 위치를 선택해 주세요 📍");return;}
+  const btn=document.getElementById("submit-btn");btn.textContent="등록 중...";btn.disabled=true;
+  try{
+    let image_url=null;
+    if(selectedFiles.length>0){
+      const file=selectedFiles[0];
+      const path=`goods/${Date.now()}_${file.name}`;
+      const{error:upErr}=await db.storage.from("goods-images").upload(path,file);
+      if(!upErr){const{data:ud}=db.storage.from("goods-images").getPublicUrl(path);image_url=ud.publicUrl;}
+    }
+    const{error}=await db.from("shares").insert([{artist,goods,host,time,memo,image_url,lat:pickedLat,lng:pickedLng}]);
+    if(error)throw error;
+    showToast("나눔이 등록됐어요! 💗");closeModal();resetForm();
+  }catch(err){console.error(err);showToast("등록에 실패했어요. 다시 시도해 주세요.");}
+  finally{btn.textContent="💗 등록하기";btn.disabled=false;}
+}
+
+async function deleteShare(id){
+  if(!confirm("이 나눔을 삭제할까요?"))return;
+  const{error}=await db.from("shares").delete().eq("id",id);
+  if(!error)showToast("삭제됐어요.");else showToast("삭제에 실패했어요.");
+}
+
+function resetForm(){
+  ["f-artist","f-goods","f-host","f-memo"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("f-time").value="";document.getElementById("img-preview").innerHTML="";
+  document.getElementById("loc-display").style.display="none";
+  document.getElementById("pick-loc-btn").textContent="📍 지도에서 위치 선택";
+  pickedLat=null;pickedLng=null;selectedFiles=[];
+}
+
+function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2800);}
+function escHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+initKakaoMap();
+</script>
+</body>
+</html>
