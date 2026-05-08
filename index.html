@@ -82,6 +82,52 @@
     .spinner{width:36px;height:36px;border:3px solid var(--pink-lt);border-top-color:var(--pink);border-radius:50%;animation:spin .7s linear infinite;margin:30px auto}
     @keyframes spin{to{transform:rotate(360deg)}}
     @media(max-width:640px){#panel{width:100%;top:auto;bottom:0;height:48vh;border-left:none;border-top:1.5px solid rgba(255,79,139,0.1);border-radius:22px 22px 0 0}#panel.hidden{transform:translateY(100%)}#panel-toggle{top:auto;bottom:48vh;right:16px;transform:none;border-radius:50px;writing-mode:horizontal-tb;padding:8px 16px}#map{height:calc(100vh - 58px - 48vh)}}
+
+    /* 우편함 버튼 및 팝업 스타일 */
+    #suggestion-btn {
+      position: fixed;
+      left: 20px;
+      bottom: 20px;
+      width: 50px;
+      height: 50px;
+      background: #fff;
+      border: 1.5px solid var(--pink-lt);
+      border-radius: 50%;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 1500;
+      box-shadow: 0 4px 15px rgba(255,79,139,0.2);
+      transition: all 0.2s;
+    }
+    #suggestion-btn:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(255,79,139,0.3); }
+    
+    #suggestion-popup {
+      position: fixed;
+      left: 20px;
+      bottom: 80px;
+      width: 300px;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      z-index: 1500;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1.5px solid rgba(255,79,139,0.1);
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .sug-header { padding: 12px 15px; background: var(--pink); color: #fff; font-size: 0.9rem; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+    .sug-body { padding: 15px; max-height: 350px; overflow-y: auto; }
+    .sug-input-area { margin-bottom: 15px; }
+    #sug-text { width: 100%; height: 60px; border-radius: 10px; border: 1.5px solid var(--pink-lt); padding: 8px; font-size: 0.85rem; font-family: inherit; resize: none; outline: none; }
+    .sug-list { border-top: 1.5px solid #f0f0f0; padding-top: 15px; }
+    .sug-item { background: var(--cream); padding: 8px 12px; border-radius: 10px; margin-bottom: 8px; font-size: 0.8rem; line-height: 1.4; color: var(--dark); }
+    .sug-item .date { font-size: 0.7rem; color: var(--gray); margin-top: 4px; display: block; }
   </style>
 </head>
 <body>
@@ -170,6 +216,24 @@
   </div>
 </div>
 <div id="toast"></div>
+
+<!-- 우편함 버튼 및 팝업 -->
+<div id="suggestion-btn" onclick="toggleSuggestionBox()">💌</div>
+<div id="suggestion-popup">
+  <div class="sug-header">
+    <span>💌 의견 남기기</span>
+    <button onclick="toggleSuggestionBox()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.1rem">×</button>
+  </div>
+  <div class="sug-body">
+    <div class="sug-input-area">
+      <textarea id="sug-text" placeholder="기능 요청이나 의견을 남겨주세요 (최대 100자)" maxlength="100"></textarea>
+      <button class="btn btn-primary btn-sm" onclick="submitSuggestion()" style="width:100%;margin-top:8px">의견 보내기</button>
+    </div>
+    <div class="sug-list" id="sug-list">
+      <div style="font-size:0.8rem;color:var(--gray);text-align:center;padding:10px">불러오는 중...</div>
+    </div>
+  </div>
+</div>
 
 <script>
 // =============================================
@@ -351,6 +415,50 @@ function resetForm(){
 
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2800);}
 function escHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+/* 우편함 기능 */
+let suggestionVisible = false;
+function toggleSuggestionBox() {
+  const popup = document.getElementById("suggestion-popup");
+  suggestionVisible = !suggestionVisible;
+  popup.style.display = suggestionVisible ? "flex" : "none";
+  if(suggestionVisible) loadSuggestions();
+}
+
+async function submitSuggestion() {
+  const text = document.getElementById("sug-text").value.trim();
+  if(!text) { showToast("의견을 입력해 주세요! 💌"); return; }
+  
+  try {
+    const { error } = await db.from("suggestions").insert([{ content: text }]);
+    if(error) throw error;
+    document.getElementById("sug-text").value = "";
+    showToast("소중한 의견 감사합니다! 💗");
+    loadSuggestions();
+  } catch (err) {
+    console.error(err);
+    showToast("의견 전송에 실패했어요. (테이블 확인 필요)");
+  }
+}
+
+async function loadSuggestions() {
+  const list = document.getElementById("sug-list");
+  const { data, error } = await db.from("suggestions").select("*").order("created_at", { ascending: false });
+  if(error) { 
+    list.innerHTML = '<div style="font-size:0.75rem;color:#f00;text-align:center">의견을 불러올 수 없습니다.</div>';
+    return; 
+  }
+  if(!data || data.length === 0) {
+    list.innerHTML = '<div style="font-size:0.75rem;color:var(--gray);text-align:center">첫 번째 의견을 남겨주세요!</div>';
+    return;
+  }
+  list.innerHTML = data.map(s => `
+    <div class="sug-item">
+      ${escHtml(s.content)}
+      <span class="date">${new Date(s.created_at).toLocaleDateString()}</span>
+    </div>
+  `).join("");
+}
 
 window.onload = function () {
   initKakaoMap();
