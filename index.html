@@ -107,8 +107,27 @@
     <div class="modal-handle"></div>
     <div class="modal-title">💗 나눔 등록하기</div>
     <div class="form-group">
+      <label class="form-label">구분 <span class="req">*</span></label>
+      <div style="display:flex;gap:10px">
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;background:var(--cream);border:1.5px solid var(--pink-lt);border-radius:12px;cursor:pointer;font-size:0.9rem;font-weight:600">
+          <input type="radio" name="f-category" value="나눔" checked style="accent-color:var(--pink)"> 💗 나눔
+        </label>
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;background:var(--cream);border:1.5px solid var(--pink-lt);border-radius:12px;cursor:pointer;font-size:0.9rem;font-weight:600">
+          <input type="radio" name="f-category" value="교환" style="accent-color:var(--pink)"> 🤝 교환
+        </label>
+      </div>
+    </div>
+    <div class="form-group">
       <label class="form-label">아티스트 / 그룹명 <span class="req">*</span></label>
       <input class="form-input" id="f-artist" type="text" placeholder="예: BTS, 에스파, 뉴진스" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">공연 정보</label>
+      <input class="form-input" id="f-performance" type="text" placeholder="예: 2024 ○○ 콘서트" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">날짜 <span class="req">*</span></label>
+      <input class="form-input" id="f-date" type="date" />
     </div>
     <div class="form-group">
       <label class="form-label">굿즈 이름 <span class="req">*</span></label>
@@ -196,7 +215,21 @@ function renderMarkers(){
     if(!s.lat||!s.lng)return;
     const pos=new kakao.maps.LatLng(s.lat,s.lng);
     const marker=new kakao.maps.Marker({position:pos,map:kakaoMap,title:`${s.artist} - ${s.goods}`});
-    const iw=new kakao.maps.InfoWindow({content:`<div style="font-family:'Pretendard',sans-serif;padding:12px;min-width:170px"><div style="font-weight:700;color:#FF4F8B;font-size:0.78rem">${escHtml(s.artist)}</div><div style="font-weight:600;margin:2px 0">${escHtml(s.goods)}</div><div style="font-size:0.8rem;color:#8A7580">👤 ${escHtml(s.host)}</div>${s.time?`<div style="font-size:0.8rem;color:#d06000">⏰ ${escHtml(s.time)}</div>`:""}</div>`,removable:true});
+    const infoHtml = `
+      <div style="font-family:'Pretendard',sans-serif;padding:12px;min-width:170px">
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+          <span style="background:${s.category==='교환'?'#4F8BFF':'#FF4F8B'};color:#fff;padding:2px 6px;border-radius:4px;font-size:0.7rem;font-weight:700">${escHtml(s.category||'나눔')}</span>
+          <div style="font-weight:700;color:var(--dark);font-size:0.78rem">${escHtml(s.artist)}</div>
+        </div>
+        ${s.performance ? `<div style="font-size:0.75rem;color:#8A7580;margin-bottom:2px">${escHtml(s.performance)}</div>` : ''}
+        <div style="font-weight:600;margin:2px 0">${escHtml(s.goods)}</div>
+        <div style="font-size:0.8rem;color:#8A7580">👤 ${escHtml(s.host)}</div>
+        <div style="font-size:0.8rem;color:#d06000;margin-top:4px">
+          ${s.date ? `📅 ${escHtml(s.date)} ` : ''}
+          ${s.time ? `⏰ ${escHtml(s.time)}` : ''}
+        </div>
+      </div>`;
+    const iw=new kakao.maps.InfoWindow({content:infoHtml,removable:true});
     kakao.maps.event.addListener(marker,"click",()=>{iw.open(kakaoMap,marker);focusCard(s.id);});
     markers[s.id]=marker;
   });
@@ -205,8 +238,30 @@ function renderMarkers(){
 function renderPanel(){
   const list=document.getElementById("share-list");
   document.getElementById("count").textContent=shares.length;
-  if(!shares.length){list.innerHTML=`<div class="empty-state"><div class="emoji">🎀</div><p>아직 등록된 나눔이 없어요.<br/>첫 나눔을 등록해 보세요!</p></div>`;return;}
-  list.innerHTML=shares.map(s=>`<div class="share-card" id="card-${s.id}" onclick="flyToMarker('${s.id}')"><div class="card-top"><div class="card-img">${s.image_url?`<img src="${s.image_url}" alt="굿즈">`:"🎁"}</div><div class="card-info"><div class="card-artist">${escHtml(s.artist)}</div><div class="card-goods">${escHtml(s.goods)}</div><div class="card-host">👤 ${escHtml(s.host)}</div></div></div><div class="card-meta">${s.time?`<span class="tag time">⏰ ${escHtml(s.time)}</span>`:""}${s.memo?`<span class="tag">💬 ${escHtml(s.memo.slice(0,20))}${s.memo.length>20?"…":""}</span>`:""}</div><div class="card-delete"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteShare('${s.id}')">🗑 삭제</button></div></div>`).join("");
+  if(!shares.length){list.innerHTML=`<div class="empty-state"><div class="emoji">🎀</div><p>아직 등록된 정보가 없어요.<br/>첫 나눔/교환을 등록해 보세요!</p></div>`;return;}
+  list.innerHTML=shares.map(s=>`
+    <div class="share-card" id="card-${s.id}" onclick="flyToMarker('${s.id}')">
+      <div class="card-top">
+        <div class="card-img">${s.image_url?`<img src="${s.image_url}" alt="굿즈">`:"🎁"}</div>
+        <div class="card-info">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
+            <span style="background:${s.category==='교환'?'rgba(79,139,255,0.1)':'rgba(255,79,139,0.1)'};color:${s.category==='교환'?'#4F8BFF':'#FF4F8B'};padding:1px 5px;border-radius:4px;font-size:0.65rem;font-weight:700">${escHtml(s.category||'나눔')}</span>
+            <div class="card-artist">${escHtml(s.artist)}</div>
+          </div>
+          ${s.performance ? `<div style="font-size:0.7rem;color:var(--gray);margin-bottom:2px">${escHtml(s.performance)}</div>` : ''}
+          <div class="card-goods">${escHtml(s.goods)}</div>
+          <div class="card-host">👤 ${escHtml(s.host)}</div>
+        </div>
+      </div>
+      <div class="card-meta">
+        ${s.date ? `<span class="tag">📅 ${escHtml(s.date)}</span>` : ''}
+        ${s.time ? `<span class="tag time">⏰ ${escHtml(s.time)}</span>` : ''}
+        ${s.memo ? `<span class="tag">💬 ${escHtml(s.memo.slice(0,20))}${s.memo.length>20?"…":""}</span>` : ''}
+      </div>
+      <div class="card-delete">
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteShare('${s.id}')">🗑 삭제</button>
+      </div>
+    </div>`).join("");
 }
 
 function focusCard(id){
@@ -227,7 +282,13 @@ function cancelPickLocation(){stopPickLocation();openModal();}
 
 function openModal(){
   document.getElementById("modal-overlay").classList.add("open");
-  if(!document.getElementById("f-time").value){const n=new Date();document.getElementById("f-time").value=String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0");}
+  const n=new Date();
+  if(!document.getElementById("f-date").value){
+    document.getElementById("f-date").value=n.toISOString().split('T')[0];
+  }
+  if(!document.getElementById("f-time").value){
+    document.getElementById("f-time").value=String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0");
+  }
 }
 function closeModal(){document.getElementById("modal-overlay").classList.remove("open");}
 document.getElementById("open-form-btn").addEventListener("click",openModal);
@@ -240,12 +301,15 @@ function previewImages(e){
 }
 
 async function submitShare(){
+  const category=document.querySelector('input[name="f-category"]:checked').value;
   const artist=document.getElementById("f-artist").value.trim();
+  const performance=document.getElementById("f-performance").value.trim();
+  const date=document.getElementById("f-date").value;
   const goods=document.getElementById("f-goods").value.trim();
   const host=document.getElementById("f-host").value.trim();
   const time=document.getElementById("f-time").value;
   const memo=document.getElementById("f-memo").value.trim();
-  if(!artist||!goods||!host||!time){showToast("필수 항목을 모두 입력해 주세요 💗");return;}
+  if(!artist||!goods||!host||!time||!date){showToast("필수 항목을 모두 입력해 주세요 💗");return;}
   if(!pickedLat){showToast("지도에서 나눔 위치를 선택해 주세요 📍");return;}
   const btn=document.getElementById("submit-btn");btn.textContent="등록 중...";btn.disabled=true;
   try{
@@ -256,9 +320,9 @@ async function submitShare(){
       const{error:upErr}=await db.storage.from("goods-images").upload(path,file);
       if(!upErr){const{data:ud}=db.storage.from("goods-images").getPublicUrl(path);image_url=ud.publicUrl;}
     }
-    const{error}=await db.from("shares").insert([{artist,goods,host,time,memo,image_url,lat:pickedLat,lng:pickedLng}]);
+    const{error}=await db.from("shares").insert([{category,artist,performance,date,goods,host,time,memo,image_url,lat:pickedLat,lng:pickedLng}]);
     if(error)throw error;
-    showToast("나눔이 등록됐어요! 💗");closeModal();resetForm();
+    showToast("등록됐어요! 💗");closeModal();resetForm();
   }catch(err){console.error(err);showToast("등록에 실패했어요. 다시 시도해 주세요.");}
   finally{btn.textContent="💗 등록하기";btn.disabled=false;}
 }
@@ -270,8 +334,8 @@ async function deleteShare(id){
 }
 
 function resetForm(){
-  ["f-artist","f-goods","f-host","f-memo"].forEach(id=>document.getElementById(id).value="");
-  document.getElementById("f-time").value="";document.getElementById("img-preview").innerHTML="";
+  ["f-artist","f-performance","f-date","f-goods","f-host","f-time","f-memo"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("img-preview").innerHTML="";
   document.getElementById("loc-display").style.display="none";
   document.getElementById("pick-loc-btn").textContent="📍 지도에서 위치 선택";
   pickedLat=null;pickedLng=null;selectedFiles=[];
