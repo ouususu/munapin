@@ -147,10 +147,6 @@
       <input class="form-input" id="f-host" type="text" placeholder="예: 빨간 모자, BTS 가방" />
     </div>
     <div class="form-group">
-      <label class="form-label">나눔 시간 <span class="req">*</span></label>
-      <input class="form-input" id="f-time" type="time" />
-    </div>
-    <div class="form-group">
       <label class="form-label">메모 / 추가 설명</label>
       <textarea class="form-textarea" id="f-memo" placeholder="예: 콘서트 시작 전까지만! 선착순 30명"></textarea>
     </div>
@@ -343,6 +339,22 @@ function resetForm(){
 
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2800);}
 function escHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+window.onload = function () {
+  initKakaoMap();
+};
+</script>
+</body>
+</html>
+rn String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+window.onload = function () {
+  initKakaoMap();
+};
+</script>
+</body>
+</html>
+rn String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
 window.onload = function () {
   initKakaoMap();
