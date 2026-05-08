@@ -322,7 +322,9 @@ async function submitShare(){
     let image_url=null;
     if(selectedFiles.length>0){
       const file=selectedFiles[0];
-      const path=`goods/${Date.now()}_${file.name}`;
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const path = `goods/${fileName}`;
       const{error:upErr}=await db.storage.from("goods-images").upload(path,file);
       if(!upErr){const{data:ud}=db.storage.from("goods-images").getPublicUrl(path);image_url=ud.publicUrl;}
     }
