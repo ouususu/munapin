@@ -151,11 +151,13 @@
 <script>
 // =============================================
 // ✅ 여기에 Supabase 정보를 붙여넣으세요
-const SUPABASE_URL  = "YOUR_SUPABASE_URL";
-const SUPABASE_ANON = "YOUR_SUPABASE_ANON_KEY";
+const SUPABASE_URL  = "https://rgcleagbrjrdijyaklvj.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnY2xlYWdicmpyZGlqeWFrbHZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNzUwMzAsImV4cCI6MjA5Mzc1MTAzMH0.fm7xJVZ2SKBEzmxFq6JXUbbStWWBI9y8XGZuAOxNR_k";
 // =============================================
 
-let db = null;  
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
 let kakaoMap=null,markers={},shares=[],pickingLocation=false;
 let pickedLat=null,pickedLng=null,selectedFiles=[],panelVisible=true;
 
@@ -173,8 +175,8 @@ function initKakaoMap(){
       document.getElementById("pick-loc-btn").textContent="✅ 위치 변경하기";
       openModal();
     });
-    //loadShares();
-    //subscribeRealtime();
+    loadShares();
+    subscribeRealtime();
   });
 }
 
