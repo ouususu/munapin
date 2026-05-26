@@ -557,6 +557,17 @@ async function loadSuggestions() {
 
 window.onload = function () {
   initKakaoMap();
+  
+  // URL 파라미터 체크 (공유 링크 대응)
+  const urlParams = new URLSearchParams(window.location.search);
+  const id = urlParams.get('id');
+  if(id) {
+    // shares가 로드된 후 실행되도록 약간의 지연을 줍니다.
+    setTimeout(() => {
+      const s = shares.find(x => x.id == id);
+      if(s) flyToMarker(id);
+    }, 1500);
+  }
 };
 </script>
 </body>
