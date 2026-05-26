@@ -87,8 +87,16 @@
     .detail-value { font-size:0.95rem; color:var(--dark); line-height:1.5; font-weight:500; }
     .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:18px; }
     .detail-memo { background:var(--cream); padding:15px; border-radius:15px; font-size:0.9rem; color:var(--dark); white-space:pre-wrap; }
-    .detail-actions { display:flex; gap:10px; margin-top:25px; }
-    .close-detail { position:absolute; top:20px; right:20px; width:32px; height:32px; border-radius:50%; background:#f5f5f5; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1.2rem; color:var(--gray); }
+    .detail-actions { display:flex; gap:10px; margin-top:25px; flex-wrap:wrap; }
+    .detail-manage-btns { display:flex; gap:8px; width:100%; margin-top:10px; padding-top:15px; border-top:1px solid #eee; }
+    .detail-manage-btns .btn { flex:1; padding:8px; font-size:0.75rem; justify-content:center; }
+    
+    .tag.closed { background:#eee; color:#888; }
+    .share-card.closed { opacity:0.7; filter:grayscale(0.5); }
+    .share-card.closed .card-artist { color:#888; }
+    .share-card.closed .card-goods { color:#555; }
+    
+    .badge-closed { background:#555; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.65rem; font-weight:700; margin-right:5px; }
 
     #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--dark);color:#fff;padding:12px 22px;border-radius:50px;font-size:0.88rem;font-weight:500;opacity:0;pointer-events:none;transition:all .3s;z-index:9999;white-space:nowrap}
     #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -170,7 +178,8 @@
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">💗 나눔 등록하기</div>
+    <div class="modal-title" id="modal-title">💗 나눔 등록하기</div>
+    <input type="hidden" id="f-id" />
     <div class="form-group">
       <label class="form-label">구분 <span class="req">*</span></label>
       <div style="display:flex;gap:10px">
@@ -222,6 +231,10 @@
     <div class="form-group">
       <label class="form-label">메모 / 추가 설명</label>
       <textarea class="form-textarea" id="f-memo" placeholder="예: 콘서트 시작 전까지만! 선착순 30명"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">관리 비밀번호 <span class="req">*</span></label>
+      <input class="form-input" id="f-password" type="password" placeholder="수정/삭제 시 필요 (4~20자)" maxlength="20" />
     </div>
     <div class="form-group">
       <label class="form-label">나눔 장소 <span class="req">*</span></label>
@@ -319,7 +332,14 @@ function renderMarkers(){
   shares.forEach(s=>{
     if(!s.lat||!s.lng)return;
     const pos=new kakao.maps.LatLng(s.lat,s.lng);
-    const marker=new kakao.maps.Marker({position:pos,map:kakaoMap,title:`${s.artist} - ${s.goods}`});
+    const markerOptions = {position:pos,map:kakaoMap,title:`${s.artist} - ${s.goods}`};
+    if(s.is_closed){
+      markerOptions.image = new kakao.maps.MarkerImage(
+        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_grey.png',
+        new kakao.maps.Size(24, 35)
+      );
+    }
+    const marker=new kakao.maps.Marker(markerOptions);
     kakao.maps.event.addListener(marker,"click",()=>{
       kakaoMap.panTo(pos);
       openDetailModal(s.id);
@@ -334,11 +354,12 @@ function renderPanel(){
   document.getElementById("count").textContent=shares.length;
   if(!shares.length){list.innerHTML=`<div class="empty-state"><div class="emoji">🎀</div><p>아직 등록된 정보가 없어요.<br/>첫 나눔/교환을 등록해 보세요!</p></div>`;return;}
   list.innerHTML=shares.map(s=>`
-    <div class="share-card" id="card-${s.id}" onclick="flyToMarker('${s.id}')">
+    <div class="share-card ${s.is_closed?'closed':''}" id="card-${s.id}" onclick="flyToMarker('${s.id}')">
       <div class="card-top">
         <div class="card-img">${s.image_url?`<img src="${s.image_url}" alt="굿즈">`:"🎁"}</div>
         <div class="card-info">
         <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px">
+          ${s.is_closed ? '<span class="badge-closed">종료됨</span>' : ''}
           <span style="background:${s.category==='교환'?'rgba(79,139,255,0.1)':'rgba(255,79,139,0.1)'};color:${s.category==='교환'?'#4F8BFF':'#FF4F8B'};padding:1px 5px;border-radius:4px;font-size:0.65rem;font-weight:700">${escHtml(s.category||'나눔')}</span>
           <div class="card-artist">${escHtml(s.artist)}</div>
         </div>
@@ -350,10 +371,8 @@ function renderPanel(){
         </div>
         <div class="card-meta">
         ${s.share_date ? `<span class="tag">📅 ${escHtml(s.share_date)}</span>` : ''}
-        ${s.time ? `<span class="tag time">⏰ ${escHtml(s.time)}</span>` : ''}        ${s.memo ? `<span class="tag">💬 ${escHtml(s.memo.slice(0,20))}${s.memo.length>20?"…":""}</span>` : ''}
-      </div>
-      <div class="card-delete">
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteShare('${s.id}')">🗑 삭제</button>
+        ${s.time ? `<span class="tag time">⏰ ${escHtml(s.time)}</span>` : ''}
+        ${s.is_closed ? '<span class="tag closed">나눔 종료</span>' : (s.memo ? `<span class="tag">💬 ${escHtml(s.memo.slice(0,20))}${s.memo.length>20?"…":""}</span>` : '')}
       </div>
     </div>`).join("");
 }
@@ -379,18 +398,50 @@ function startPickLocation(){closeModal();pickingLocation=true;document.getEleme
 function stopPickLocation(){pickingLocation=false;document.getElementById("pick-location-banner").classList.remove("active");}
 function cancelPickLocation(){stopPickLocation();openModal();}
 
-function openModal(){
-  document.getElementById("modal-overlay").classList.add("open");
-  const n=new Date();
-  if(!document.getElementById("f-date").value){
+function openModal(editId = null){
+  const modal = document.getElementById("modal-overlay");
+  const title = document.getElementById("modal-title");
+  const idInput = document.getElementById("f-id");
+  
+  resetForm();
+  
+  if(editId) {
+    const s = shares.find(x => x.id == editId);
+    if(!s) return;
+    title.textContent = "💗 나눔 수정하기";
+    idInput.value = s.id;
+    document.querySelector(`input[name="f-category"][value="${s.category}"]`).checked = true;
+    document.getElementById("f-artist").value = s.artist;
+    document.getElementById("f-performance").value = s.performance || "";
+    document.getElementById("f-venue").value = s.venue || "";
+    document.getElementById("f-date").value = s.share_date;
+    document.getElementById("f-time").value = s.time;
+    document.getElementById("f-goods").value = s.goods;
+    document.getElementById("f-host").value = s.host;
+    document.getElementById("f-memo").value = s.memo || "";
+    pickedLat = s.lat;
+    pickedLng = s.lng;
+    document.getElementById("loc-display").style.display="block";
+    document.getElementById("loc-display").textContent=`📍 위치 선택됨 (${pickedLat.toFixed(5)}, ${pickedLng.toFixed(5)})`;
+    document.getElementById("pick-loc-btn").textContent="✅ 위치 변경하기";
+    if(s.image_url) {
+      const p = document.getElementById("img-preview");
+      const img = document.createElement("img");
+      img.src = s.image_url;
+      p.appendChild(img);
+    }
+  } else {
+    title.textContent = "💗 나눔 등록하기";
+    idInput.value = "";
+    const n=new Date();
     document.getElementById("f-date").value=n.toISOString().split('T')[0];
-  }
-  if(!document.getElementById("f-time").value){
     document.getElementById("f-time").value=String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0");
   }
+  
+  modal.classList.add("open");
 }
 function closeModal(){document.getElementById("modal-overlay").classList.remove("open");}
-document.getElementById("open-form-btn").addEventListener("click",openModal);
+document.getElementById("open-form-btn").addEventListener("click", () => openModal());
 document.getElementById("modal-overlay").addEventListener("click",(e)=>{if(e.target===document.getElementById("modal-overlay"))closeModal();});
 
 function previewImages(e){
@@ -400,6 +451,7 @@ function previewImages(e){
 }
 
 async function submitShare(){
+  const id=document.getElementById("f-id").value;
   const category=document.querySelector('input[name="f-category"]:checked').value;
   const artist=document.getElementById("f-artist").value.trim();
   const performance=document.getElementById("f-performance").value.trim();
@@ -409,11 +461,17 @@ async function submitShare(){
   const host=document.getElementById("f-host").value.trim();
   const time=document.getElementById("f-time").value;
   const memo=document.getElementById("f-memo").value.trim();
-  if(!artist||!goods||!host||!time||!share_date){showToast("필수 항목을 모두 입력해 주세요 💗");return;}
+  const password=document.getElementById("f-password").value;
+
+  if(!artist||!goods||!host||!time||!share_date||!password){showToast("필수 항목(비밀번호 포함)을 모두 입력해 주세요 💗");return;}
+  if(password.length < 4){showToast("비밀번호는 4자 이상으로 설정해 주세요.");return;}
   if(!pickedLat){showToast("지도에서 나눔 위치를 선택해 주세요 📍");return;}
-  const btn=document.getElementById("submit-btn");btn.textContent="등록 중...";btn.disabled=true;
+  
+  const btn=document.getElementById("submit-btn");btn.textContent="저장 중...";btn.disabled=true;
   try{
     let image_url=null;
+    // 수정 시 이미 이미지가 있고 새로 선택하지 않은 경우 기존 이미지 유지 로직은 shares 데이터에서 가져와야 함.
+    // 여기서는 간단히 새로 선택된 경우만 업로드.
     if(selectedFiles.length>0){
       const file=selectedFiles[0];
       const fileExt = file.name.split('.').pop();
@@ -421,18 +479,55 @@ async function submitShare(){
       const path = `goods/${fileName}`;
       const{error:upErr}=await db.storage.from("goods-images").upload(path,file);
       if(!upErr){const{data:ud}=db.storage.from("goods-images").getPublicUrl(path);image_url=ud.publicUrl;}
+    } else if (id) {
+      const s = shares.find(x => x.id == id);
+      image_url = s.image_url;
     }
-    const{error}=await db.from("shares").insert([{category,artist,performance,venue,share_date,goods,host,time,memo,image_url,lat:pickedLat,lng:pickedLng}]);
+
+    const row = {category,artist,performance,venue,share_date,goods,host,time,memo,image_url,lat:pickedLat,lng:pickedLng,password};
+    
+    let error;
+    if(id) {
+      const {error:err} = await db.from("shares").update(row).eq("id", id);
+      error = err;
+    } else {
+      const {error:err} = await db.from("shares").insert([row]);
+      error = err;
+    }
+    
     if(error)throw error;
-    showToast("등록됐어요! 💗");closeModal();resetForm();
-  }catch(err){console.error(err);showToast("등록에 실패했어요. 다시 시도해 주세요.");}
+    showToast(id ? "수정됐어요! 💗" : "등록됐어요! 💗");
+    closeModal();
+    if(id) closeDetailModal();
+    resetForm();
+  }catch(err){console.error(err);showToast("저장에 실패했어요. 다시 시도해 주세요.");}
   finally{btn.textContent="💗 등록하기";btn.disabled=false;}
 }
 
-async function deleteShare(id){
-  if(!confirm("이 나눔을 삭제할까요?"))return;
-  const{error}=await db.from("shares").delete().eq("id",id);
-  if(!error)showToast("삭제됐어요.");else showToast("삭제에 실패했어요.");
+async function verifyAction(id, action) {
+  const s = shares.find(x => x.id == id);
+  if(!s) return;
+  
+  const inputPw = prompt("관리 비밀번호를 입력해 주세요.");
+  if(inputPw === null) return;
+  if(inputPw !== s.password) {
+    showToast("비밀번호가 일치하지 않습니다. ❌");
+    return;
+  }
+  
+  if(action === 'delete') {
+    if(!confirm("정말로 삭제할까요?")) return;
+    const {error} = await db.from("shares").delete().eq("id", id);
+    if(!error) { showToast("삭제되었습니다."); closeDetailModal(); }
+    else showToast("삭제 실패");
+  } else if(action === 'close') {
+    if(!confirm("나눔을 종료할까요?")) return;
+    const {error} = await db.from("shares").update({is_closed: true}).eq("id", id);
+    if(!error) { showToast("나눔이 종료되었습니다."); closeDetailModal(); }
+    else showToast("종료 처리 실패");
+  } else if(action === 'edit') {
+    openModal(id);
+  }
 }
 
 function openDetailModal(id){
@@ -443,8 +538,10 @@ function openDetailModal(id){
   const isExchange = s.category === '교환';
   
   content.innerHTML = `
-    <div class="detail-badge" style="background:${isExchange?'rgba(79,139,255,0.15)':'rgba(255,79,139,0.15)'}; color:${isExchange?'#4F8BFF':'#FF4F8B'}">
-      ${isExchange ? '🤝 교환' : '💗 나눔'}
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div class="detail-badge" style="background:${s.is_closed ? '#eee' : (isExchange?'rgba(79,139,255,0.15)':'rgba(255,79,139,0.15)')}; color:${s.is_closed ? '#888' : (isExchange?'#4F8BFF':'#FF4F8B')}">
+        ${s.is_closed ? '종료됨' : (isExchange ? '🤝 교환' : '💗 나눔')}
+      </div>
     </div>
     <div class="detail-artist">${escHtml(s.artist)}</div>
     <div class="detail-goods">${escHtml(s.goods)}</div>
@@ -486,6 +583,12 @@ function openDetailModal(id){
       <div class="detail-label">💬 추가 설명</div>
       <div class="detail-memo">${escHtml(s.memo)}</div>
     </div>` : ''}
+
+    <div class="detail-manage-btns">
+      <button class="btn btn-ghost" onclick="verifyAction('${s.id}', 'edit')">📝 수정</button>
+      <button class="btn btn-ghost" onclick="verifyAction('${s.id}', 'close')" ${s.is_closed ? 'disabled' : ''}>🏁 종료</button>
+      <button class="btn btn-ghost" onclick="verifyAction('${s.id}', 'delete')" style="color:#ff4444">🗑 삭제</button>
+    </div>
   `;
   
   document.getElementById("detail-share-btn").onclick = () => {
@@ -501,7 +604,10 @@ function closeDetailModal(){
 }
 
 function resetForm(){
-  ["f-artist","f-performance","f-venue","f-date","f-goods","f-host","f-time","f-memo"].forEach(id=>document.getElementById(id).value="");
+  ["f-id","f-artist","f-performance","f-venue","f-date","f-goods","f-host","f-time","f-memo","f-password"].forEach(id=> {
+    const el = document.getElementById(id);
+    if(el) el.value = "";
+  });
   document.getElementById("img-preview").innerHTML="";
   document.getElementById("loc-display").style.display="none";
   document.getElementById("pick-loc-btn").textContent="📍 지도에서 위치 선택";
