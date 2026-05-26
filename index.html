@@ -330,7 +330,14 @@ function initKakaoMap(){
 async function loadShares(){
   const{data,error}=await db.from("shares").select("*").order("created_at",{ascending:false});
   if(error){console.error(error);return;}
-  shares=data||[];renderPanel();renderMarkers();
+  
+  // 나눔 종료된 건을 가장 아래로 정렬 (is_closed가 false인 것이 위로, true인 것이 아래로)
+  const sortedData = (data || []).sort((a, b) => {
+    if (a.is_closed === b.is_closed) return 0;
+    return a.is_closed ? 1 : -1;
+  });
+  
+  shares=sortedData;renderPanel();renderMarkers();
 }
 
 function subscribeRealtime(){
