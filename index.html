@@ -75,21 +75,29 @@
     /* 상세 정보 모달 스타일 (Bottom Sheet) */
     .detail-overlay { position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); display:flex; align-items:flex-end; justify-content:center; opacity:0; pointer-events:none; transition:opacity .3s; }
     .detail-overlay.open { opacity:1; pointer-events:all; }
-    .detail-sheet { background:#fff; width:100%; max-width:550px; border-radius:30px 30px 0 0; padding:20px 24px 40px; transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); max-height:85vh; overflow-y:auto; position:relative; }
+    .detail-sheet { background:#fff; width:100%; max-width:550px; border-radius:30px 30px 0 0; padding:20px 24px 30px; transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1); max-height:85vh; display:flex; flex-direction:column; position:relative; }
     .detail-overlay.open .detail-sheet { transform:translateY(0); }
-    .detail-handle { width:40px; height:5px; background:#eee; border-radius:10px; margin:0 auto 20px; }
-    .detail-badge { display:inline-block; padding:4px 12px; border-radius:50px; font-size:0.75rem; font-weight:700; margin-bottom:12px; }
-    .detail-artist { font-family:var(--font-display); font-size:1.3rem; font-weight:700; color:var(--dark); margin-bottom:4px; }
-    .detail-goods { font-size:1.1rem; font-weight:600; color:var(--pink-dk); margin-bottom:15px; }
-    .detail-img { width:100%; aspect-ratio:1/1; border-radius:20px; object-fit:cover; margin-bottom:20px; border:1px solid #f0f0f0; background:#f9f9f9; display:flex; align-items:center; justify-content:center; font-size:3rem; }
+    .detail-handle { width:40px; height:5px; background:#eee; border-radius:10px; margin:0 auto 20px; flex-shrink:0; }
+    .detail-scroll-content { flex:1; overflow-y:auto; padding-right:4px; margin-bottom:10px; }
+    .detail-scroll-content::-webkit-scrollbar { width:4px; }
+    .detail-scroll-content::-webkit-scrollbar-thumb { background:var(--pink-lt); border-radius:4px; }
+    
+    .detail-header { display:flex; gap:16px; margin-bottom:20px; align-items:center; }
+    .detail-image { width:80px; height:80px; border-radius:12px; object-fit:cover; border:1.5px solid var(--pink-lt); background:linear-gradient(135deg,#FFE4EF,#FFB3CF); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.8rem; overflow:hidden; box-shadow:0 4px 12px rgba(255,79,139,0.1); }
+    .detail-image img { width:100%; height:100%; object-fit:cover; }
+    .detail-info-main { flex:1; min-width:0; }
+    .detail-badge { display:inline-block; padding:4px 12px; border-radius:50px; font-size:0.75rem; font-weight:700; margin-bottom:10px; }
+    .detail-artist { font-family:var(--font-display); font-size:1.2rem; font-weight:700; color:var(--dark); margin-bottom:4px; line-height:1.3; }
+    .detail-goods { font-size:1rem; font-weight:600; color:var(--pink-dk); margin-bottom:0; line-height:1.4; }
+    
     .detail-section { margin-bottom:18px; }
     .detail-label { font-size:0.8rem; color:var(--gray); font-weight:600; margin-bottom:5px; display:flex; align-items:center; gap:5px; }
     .detail-value { font-size:0.95rem; color:var(--dark); line-height:1.5; font-weight:500; }
     .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:18px; }
-    .detail-memo { background:var(--cream); padding:15px; border-radius:15px; font-size:0.9rem; color:var(--dark); white-space:pre-wrap; }
-    .detail-actions { display:flex; gap:10px; margin-top:25px; flex-wrap:wrap; }
+    .detail-memo { background:var(--cream); padding:15px; border-radius:15px; font-size:0.9rem; color:var(--dark); white-space:pre-wrap; border:1px solid rgba(255,79,139,0.05); }
+    .detail-actions { display:flex; gap:10px; padding-top:15px; border-top:1.5px solid rgba(0,0,0,0.05); flex-shrink:0; }
     .detail-manage-btns { display:flex; gap:8px; width:100%; margin-top:10px; padding-top:15px; border-top:1px solid #eee; }
-    .detail-manage-btns .btn { flex:1; padding:8px; font-size:0.75rem; justify-content:center; }
+    .detail-manage-btns .btn { flex:1; padding:9px; font-size:0.8rem; justify-content:center; }
     
     .tag.closed { background:#eee; color:#888; }
     .share-card.closed { opacity:0.7; filter:grayscale(0.5); }
@@ -254,8 +262,10 @@
     <div class="detail-handle"></div>
     <div class="close-detail" onclick="closeDetailModal()">×</div>
     
-    <div id="detail-content">
-      <!-- 동적 렌더링 영역 -->
+    <div class="detail-scroll-content">
+      <div id="detail-content">
+        <!-- 동적 렌더링 영역 -->
+      </div>
     </div>
     
     <div class="detail-actions">
@@ -498,7 +508,11 @@ async function submitShare(){
     if(error)throw error;
     showToast(id ? "수정됐어요! 💗" : "등록됐어요! 💗");
     closeModal();
-    if(id) closeDetailModal();
+    if(id) {
+      // 수정 시 최신 정보를 보여주기 위해 loadShares 호출 후 상세 팝업 다시 열기
+      await loadShares();
+      openDetailModal(id);
+    }
     resetForm();
   }catch(err){console.error(err);showToast("저장에 실패했어요. 다시 시도해 주세요.");}
   finally{btn.textContent="💗 등록하기";btn.disabled=false;}
@@ -507,29 +521,48 @@ async function submitShare(){
 async function verifyAction(id, action) {
   const s = shares.find(x => x.id == id);
   if(!s) return;
-  
+
   const inputPw = prompt("관리 비밀번호를 입력해 주세요.");
   if(inputPw === null) return;
   if(inputPw !== s.password) {
     showToast("비밀번호가 일치하지 않습니다. ❌");
     return;
   }
-  
+
+  // 비밀번호 확인 후 상세 팝업을 먼저 닫음 (수정창/확인창이 잘 보이도록)
+  closeDetailModal();
+
   if(action === 'delete') {
-    if(!confirm("정말로 삭제할까요?")) return;
+    if(!confirm("정말로 삭제할까요?")) {
+      openDetailModal(id); // 취소 시 다시 열어줌
+      return;
+    }
     const {error} = await db.from("shares").delete().eq("id", id);
-    if(!error) { showToast("삭제되었습니다."); closeDetailModal(); }
-    else showToast("삭제 실패");
+    if(!error) { 
+      showToast("삭제되었습니다."); 
+      // 삭제 시에는 데이터가 없으므로 다시 열지 않음
+    } else {
+      showToast("삭제 실패");
+      openDetailModal(id);
+    }
   } else if(action === 'close') {
-    if(!confirm("나눔을 종료할까요?")) return;
+    if(!confirm("나눔을 종료할까요?")) {
+      openDetailModal(id); // 취소 시 다시 열어줌
+      return;
+    }
     const {error} = await db.from("shares").update({is_closed: true}).eq("id", id);
-    if(!error) { showToast("나눔이 종료되었습니다."); closeDetailModal(); }
-    else showToast("종료 처리 실패");
+    if(!error) { 
+      showToast("나눔이 종료되었습니다."); 
+      await loadShares();
+      openDetailModal(id); // 상태 변경 후 최신 정보로 다시 열기
+    } else {
+      showToast("종료 처리 실패");
+      openDetailModal(id);
+    }
   } else if(action === 'edit') {
     openModal(id);
   }
 }
-
 function openDetailModal(id){
   const s = shares.find(x => x.id == id);
   if(!s) return;
@@ -538,16 +571,17 @@ function openDetailModal(id){
   const isExchange = s.category === '교환';
   
   content.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-      <div class="detail-badge" style="background:${s.is_closed ? '#eee' : (isExchange?'rgba(79,139,255,0.15)':'rgba(255,79,139,0.15)')}; color:${s.is_closed ? '#888' : (isExchange?'#4F8BFF':'#FF4F8B')}">
-        ${s.is_closed ? '종료됨' : (isExchange ? '🤝 교환' : '💗 나눔')}
+    <div class="detail-header">
+      <div class="detail-image">
+        ${s.image_url ? `<img src="${s.image_url}">` : '🎁'}
       </div>
-    </div>
-    <div class="detail-artist">${escHtml(s.artist)}</div>
-    <div class="detail-goods">${escHtml(s.goods)}</div>
-    
-    <div class="detail-img">
-      ${s.image_url ? `<img src="${s.image_url}" style="width:100%; height:100%; object-fit:cover; border-radius:20px;">` : '🎁'}
+      <div class="detail-info-main">
+        <div class="detail-badge" style="background:${s.is_closed ? '#eee' : (isExchange?'rgba(79,139,255,0.15)':'rgba(255,79,139,0.15)')}; color:${s.is_closed ? '#888' : (isExchange?'#4F8BFF':'#FF4F8B')}">
+          ${s.is_closed ? '종료됨' : (isExchange ? '🤝 교환' : '💗 나눔')}
+        </div>
+        <div class="detail-artist">${escHtml(s.artist)}</div>
+        <div class="detail-goods">${escHtml(s.goods)}</div>
+      </div>
     </div>
 
     <div class="detail-grid">
@@ -597,6 +631,8 @@ function openDetailModal(id){
   };
   
   document.getElementById("detail-overlay").classList.add("open");
+  // 스크롤 상단으로 초기화
+  document.querySelector(".detail-scroll-content").scrollTop = 0;
 }
 
 function closeDetailModal(){
