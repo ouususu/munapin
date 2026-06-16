@@ -347,15 +347,9 @@ function subscribeRealtime(){
 function renderMarkers(){
   Object.values(markers).forEach(m=>m.setMap(null));markers={};
   shares.forEach(s=>{
-    if(!s.lat||!s.lng)return;
+    if(!s.lat||!s.lng || s.is_closed)return; // 종료된 나눔은 지도에서 숨김
     const pos=new kakao.maps.LatLng(s.lat,s.lng);
     const markerOptions = {position:pos,map:kakaoMap,title:`${s.artist} - ${s.goods}`};
-    if(s.is_closed){
-      markerOptions.image = new kakao.maps.MarkerImage(
-        'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_grey.png',
-        new kakao.maps.Size(24, 35)
-      );
-    }
     const marker=new kakao.maps.Marker(markerOptions);
     kakao.maps.event.addListener(marker,"click",()=>{
       kakaoMap.panTo(pos);
